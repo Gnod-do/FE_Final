@@ -90,7 +90,12 @@ const Homepage = () => {
     }, [chatState.createdChat, chatState.createdGroup, dispatch, token, messageState.newMessage, chatState.deletedChat, chatState.editedGroup, chatState.markedAsReadChat]);
 
     useEffect(() => {
-        setCurrentChat(chatState.editedGroup);
+        if (chatState.editedGroup) {
+            setCurrentChat({
+                ...chatState.editedGroup,
+                users: chatState.editedGroup.users.map(user => ({...user}))
+            });
+        }
     }, [chatState.editedGroup]);
 
     useEffect(() => {
@@ -100,12 +105,17 @@ const Homepage = () => {
     }, [currentChat, dispatch, token, messageState.newMessage]);
 
     useEffect(() => {
-        setMessages(messageState.messages);
+        if (messageState.messages) {
+            setMessages([...messageState.messages.map(msg => ({...msg}))]);
+        }
     }, [messageState.messages]);
 
     useEffect(() => {
         if (messageState.newMessage && stompClient && currentChat && isConnected) {
-            const webSocketMessage: WebSocketMessageDTO = {...messageState.newMessage, chat: currentChat};
+            const webSocketMessage: WebSocketMessageDTO = {
+                ...messageState.newMessage,
+                chat: {...currentChat, users: currentChat.users.map(user => ({...user}))}
+            };
             stompClient.send("/app/messages", {}, JSON.stringify(webSocketMessage));
         }
     }, [messageState.newMessage]);
@@ -162,17 +172,30 @@ const Homepage = () => {
         }
     };
 
+    useEffect(() => {
+        return () => {
+            if (stompClient && stompClient.connected) {
+                disconnect();
+            }
+        };
+    }, []);
+
     const onError = (error: any) => {
         console.error("WebSocket connection error", error);
     };
 
     const onMessageReceive = () => {
-        setMessageReceived(true);
+        setMessageReceived(prev => {
+            if (!prev) {
+                return true;
+            }
+            return prev;
+        });
     };
 
     const onSendMessage = () => {
-        if (currentChat?.id && token) {
-            dispatch(createMessage({chatId: currentChat.id, content: newMessage}, token));
+        if (currentChat?.id && token && newMessage.trim()) {  // Thêm check newMessage.trim()
+            dispatch(createMessage({chatId: currentChat.id, content: newMessage.trim()}, token));
             setNewMessage("");
         }
     };
@@ -221,7 +244,10 @@ const Homepage = () => {
         if (token) {
             dispatch(markChatAsRead(chat.id, token));
         }
-        setCurrentChat(chat);
+        setCurrentChat({
+            ...chat,
+            users: chat.users.map(user => ({...user}))
+        });
     };
 
     const getSearchEndAdornment = () => {

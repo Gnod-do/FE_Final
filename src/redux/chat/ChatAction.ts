@@ -21,7 +21,10 @@ export const createChat = (userId: UUID, token: string) => async (dispatch: AppD
 
         const resData: ChatDTO = await res.json();
         console.log('Created single chat: ', resData);
-        dispatch({type: actionTypes.CREATE_CHAT, payload: resData});
+        dispatch({
+            type: actionTypes.CREATE_CHAT, 
+            payload: {...resData, users: resData.users.map(user => ({...user}))}
+        });
     } catch (error: any) {
         console.error('Creating single chat failed: ', error);
     }
@@ -40,7 +43,10 @@ export const createGroupChat = (data: GroupChatRequestDTO, token: string) => asy
 
         const resData: ChatDTO = await res.json();
         console.log('Created group chat: ', resData);
-        dispatch({type: actionTypes.CREATE_GROUP, payload: resData});
+        dispatch({
+            type: actionTypes.CREATE_GROUP, 
+            payload: {...resData, users: resData.users.map(user => ({...user}))}
+        });
     } catch (error: any) {
         console.error('Creating group chat failed: ', error);
     }
@@ -58,7 +64,14 @@ export const getUserChats = (token: string) => async (dispatch: AppDispatch): Pr
 
         const resData: ChatDTO[] = await res.json();
         console.log('Getting user chats: ', resData);
-        dispatch({type: actionTypes.GET_ALL_CHATS, payload: resData});
+        dispatch({
+            type: actionTypes.GET_ALL_CHATS, 
+            payload: resData.map(chat => ({
+                ...chat,
+                users: chat.users.map(user => ({...user})),
+                messages: chat.messages ? chat.messages.map(msg => ({...msg})) : []
+            }))
+        });
     } catch (error: any) {
         console.error('Getting user chats failed: ', error);
     }
@@ -76,7 +89,10 @@ export const deleteChat = (id: UUID, token: string) => async (dispatch: AppDispa
 
         const resData: ApiResponseDTO = await res.json();
         console.log('Deleted chat: ', resData);
-        dispatch({type: actionTypes.DELETE_CHAT, payload: resData});
+        dispatch({
+            type: actionTypes.DELETE_CHAT, 
+            payload: {...resData}
+        });
     } catch (error: any) {
         console.error('Deleting chat failed: ', error);
     }
@@ -94,7 +110,10 @@ export const addUserToGroupChat = (chatId: UUID, userId: UUID, token: string) =>
 
         const resData: ChatDTO = await res.json();
         console.log('Added user to group chat: ', resData);
-        dispatch({type: actionTypes.ADD_MEMBER_TO_GROUP, payload: resData});
+        dispatch({
+            type: actionTypes.ADD_MEMBER_TO_GROUP, 
+            payload: {...resData, users: resData.users.map(user => ({...user}))}
+        });
     } catch (error: any) {
         console.error('Adding user to group chat failed: ', error);
     }
@@ -112,7 +131,10 @@ export const removeUserFromGroupChat = (chatId: UUID, userId: UUID, token: strin
 
         const resData: ChatDTO = await res.json();
         console.log('Removed user from group chat: ', resData);
-        dispatch({type: actionTypes.ADD_MEMBER_TO_GROUP, payload: resData});
+        dispatch({
+            type: actionTypes.ADD_MEMBER_TO_GROUP ,  // Sửa lại action type
+            payload: {...resData, users: resData.users.map(user => ({...user}))}
+        });
     } catch (error: any) {
         console.error('Removing user from group chat failed: ', error);
     }
@@ -130,7 +152,10 @@ export const markChatAsRead = (chatId: UUID, token: string) => async (dispatch: 
 
         const resData: ChatDTO = await res.json();
         console.log('Marked chat as read: ', resData);
-        dispatch({type: actionTypes.MARK_CHAT_AS_READ, payload: resData});
+        dispatch({
+            type: actionTypes.MARK_CHAT_AS_READ, 
+            payload: {...resData, users: resData.users.map(user => ({...user}))}
+        });
     } catch (error: any) {
         console.error('Marking chat as read failed, ', error);
     }

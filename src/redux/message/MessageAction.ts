@@ -20,7 +20,12 @@ export const createMessage = (data: SendMessageRequestDTO, token: string) => asy
 
         const resData: MessageDTO = await res.json();
         console.log('Send message: ', resData);
-        dispatch({type: actionTypes.CREATE_NEW_MESSAGE, payload: resData});
+        
+        // Tạo bản sao của dữ liệu trước khi dispatch
+        dispatch({
+            type: actionTypes.CREATE_NEW_MESSAGE, 
+            payload: {...resData}  // Tạo một object mới từ resData
+        });
     } catch (error: any) {
         console.error('Sending message failed', error);
     }
@@ -38,7 +43,12 @@ export const getAllMessages = (chatId: UUID, token: string) => async (dispatch: 
 
         const resData: MessageDTO[] = await res.json();
         console.log('Getting messages: ', resData);
-        dispatch({type: actionTypes.GET_ALL_MESSAGES, payload: resData});
+        
+        // Tạo bản sao của mảng messages trước khi dispatch
+        dispatch({
+            type: actionTypes.GET_ALL_MESSAGES, 
+            payload: resData.map(message => ({...message}))  // Tạo bản sao mới cho mỗi message
+        });
     } catch (error: any) {
         console.error('Getting messages failed: ', error);
     }

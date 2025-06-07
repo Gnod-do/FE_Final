@@ -10,11 +10,19 @@ const initialState: MessageReducerState = {
 const messageReducer = (state: MessageReducerState = initialState, action: Action): MessageReducerState => {
     switch (action.type) {
         case actionTypes.CREATE_NEW_MESSAGE:
-            return {...state, newMessage: action.payload};
+            return {
+                ...state,
+                newMessage: {...action.payload},
+                messages: [...state.messages, {...action.payload}]  // Thêm message mới vào mảng messages
+            };
         case actionTypes.GET_ALL_MESSAGES:
-            return {...state, messages: action.payload};
+            return {
+                ...state,
+                messages: action.payload.map((message: any) => ({...message}))  // Tạo bản copy mới cho mỗi message
+            };
+        default:
+            return state;
     }
-    return state;
 };
 
 export default messageReducer;

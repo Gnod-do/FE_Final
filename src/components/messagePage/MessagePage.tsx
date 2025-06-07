@@ -53,71 +53,68 @@ const MessagePage = (props: MessagePageProps) => {
 
 
     useEffect(() => {
-        console.log("Is connected: ", props.isConnected);
-        console.log("Is stompClient: ", props.stompClient);
         if (props.isConnected && props.stompClient && props.chat?.id) {
             const subscription = props.stompClient.subscribe(
                 `/topic/typing/${props.chat.id}`, 
                 (message) => {
-                    console.log("Received typing message:", message.body);
                     const typingData = JSON.parse(message.body);
-                    console.log("Parsed typing data:", typingData);
-                    console.log("Current user ID:", props.reqUser?.id);
-
-
-
+                    
                     if (typingData.senderId !== props.reqUser?.id) {
-                        console.log("Processing typing status for other user");
-                        if (typingData.type === "TYPING") {
-                            console.log("Adding user to typing list:", typingData.senderName);
-                            setTypingUsers(prev => {
-                                const newSet = new Set(prev);
+                        setTypingUsers(prev => {
+                            const newSet = new Set(prev);
+                            if (typingData.type === "TYPING") {
                                 newSet.add(typingData.senderName);
-                                console.log("Updated typing users:", Array.from(newSet));
-                                return newSet;
-                            });
-                        } else {
-                            console.log("Removing user from typing list:", typingData.senderName);
-                            setTypingUsers(prev => {
-                                const newSet = new Set(prev);
+                            } else {
                                 newSet.delete(typingData.senderName);
-                                console.log("Updated typing users:", Array.from(newSet));
-                                return newSet;
-                            });
-                        }
+                            }
+                            return newSet;
+                        });
                     }
                 }
             );
-            console.log("Typing Users: ", typingUsers)
-            return () => subscription.unsubscribe();
+
+            return () => {
+                subscription.unsubscribe();
+                // Clear typing users when unmounting/changing chat
+                setTypingUsers(new Set());
+            };
         }
-    }, [props.isConnected, props.stompClient, props.chat?.id]);
+    }, [props.isConnected, props.stompClient, props.chat?.id, props.reqUser?.id]);
+
+    useEffect(() => {
+        return () => {
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+        };
+    }, []);
 
     const handleTyping = () => {
-        if (props.stompClient && props.chat?.id) {
-            // Send typing status
+        if (!props.stompClient || !props.chat?.id) return;
+
+        if (!isTyping) {
+            setIsTyping(true);
             props.stompClient.send("/app/typing", {}, JSON.stringify({
                 chatId: props.chat.id,
                 senderId: props.reqUser?.id,
                 senderName: props.reqUser?.fullName,
                 type: "TYPING"
             }));
-
-            // Clear previous timeout
-            if (typingTimeoutRef.current) {
-                clearTimeout(typingTimeoutRef.current);
-            }
-
-            // Set new timeout
-            typingTimeoutRef.current = setTimeout(() => {
-                props.stompClient?.send("/app/typing", {}, JSON.stringify({
-                    chatId: props.chat.id,
-                    senderId: props.reqUser?.id,
-                    senderName: props.reqUser?.fullName,
-                    type: "STOP_TYPING"
-                }));
-            }, 1000);
         }
+
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+
+        typingTimeoutRef.current = setTimeout(() => {
+            setIsTyping(false);
+            props.stompClient?.send("/app/typing", {}, JSON.stringify({
+                chatId: props.chat.id,
+                senderId: props.reqUser?.id,
+                senderName: props.reqUser?.fullName,
+                type: "STOP_TYPING"
+            }));
+        }, 1000);
     };
 
     console.log("This is message",props.messages);
@@ -148,6 +145,11 @@ const MessagePage = (props: MessagePageProps) => {
     const onDeleteChat = () => {
         onCloseMenu();
         if (token) {
+            // Clear typing users before deleting chat
+            setTypingUsers(new Set());
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
             dispatch(deleteChat(props.chat.id, token));
             props.setMessages([]);
             props.setCurrentChat(null);
