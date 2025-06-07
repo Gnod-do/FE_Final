@@ -18,6 +18,8 @@ import EmojiPicker from "emoji-picker-react";
 import MoodIcon from '@mui/icons-material/Mood';
 import {EmojiClickData} from "emoji-picker-react/dist/types/exposedTypes";
 import {getAllMessages} from "../../redux/message/MessageAction";
+import { Client } from "stompjs";
+import { Console } from "console";
 
 interface MessagePageProps {
     chat: ChatDTO;
@@ -28,7 +30,9 @@ interface MessagePageProps {
     onSendMessage: () => void;
     setIsShowEditGroupChat: (isShowEditGroupChat: boolean) => void;
     setCurrentChat: (chat: ChatDTO | null) => void;
-    setMessages: (messages: MessageDTO[] | []) => void
+    setMessages: (messages: MessageDTO[] | []) => void;
+    isConnected: Boolean;
+    stompClient: Client | undefined | null;
 }
 
 const MessagePage = (props: MessagePageProps) => {
@@ -42,6 +46,79 @@ const MessagePage = (props: MessagePageProps) => {
     const dispatch: AppDispatch = useDispatch();
     const open = Boolean(anchor);
     const token: string | null = localStorage.getItem(TOKEN);
+
+    const [isTyping, setIsTyping] = useState<boolean>(false);
+    const [typingUsers, setTypingUsers] = useState<Set<string>>(new Set());
+    const typingTimeoutRef = useRef<NodeJS.Timeout>();
+
+
+    useEffect(() => {
+        console.log("Is connected: ", props.isConnected);
+        console.log("Is stompClient: ", props.stompClient);
+        if (props.isConnected && props.stompClient && props.chat?.id) {
+            const subscription = props.stompClient.subscribe(
+                `/topic/typing/${props.chat.id}`, 
+                (message) => {
+                    console.log("Received typing message:", message.body);
+                    const typingData = JSON.parse(message.body);
+                    console.log("Parsed typing data:", typingData);
+                    console.log("Current user ID:", props.reqUser?.id);
+
+
+
+                    if (typingData.senderId !== props.reqUser?.id) {
+                        console.log("Processing typing status for other user");
+                        if (typingData.type === "TYPING") {
+                            console.log("Adding user to typing list:", typingData.senderName);
+                            setTypingUsers(prev => {
+                                const newSet = new Set(prev);
+                                newSet.add(typingData.senderName);
+                                console.log("Updated typing users:", Array.from(newSet));
+                                return newSet;
+                            });
+                        } else {
+                            console.log("Removing user from typing list:", typingData.senderName);
+                            setTypingUsers(prev => {
+                                const newSet = new Set(prev);
+                                newSet.delete(typingData.senderName);
+                                console.log("Updated typing users:", Array.from(newSet));
+                                return newSet;
+                            });
+                        }
+                    }
+                }
+            );
+            console.log("Typing Users: ", typingUsers)
+            return () => subscription.unsubscribe();
+        }
+    }, [props.isConnected, props.stompClient, props.chat?.id]);
+
+    const handleTyping = () => {
+        if (props.stompClient && props.chat?.id) {
+            // Send typing status
+            props.stompClient.send("/app/typing", {}, JSON.stringify({
+                chatId: props.chat.id,
+                senderId: props.reqUser?.id,
+                senderName: props.reqUser?.fullName,
+                type: "TYPING"
+            }));
+
+            // Clear previous timeout
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+
+            // Set new timeout
+            typingTimeoutRef.current = setTimeout(() => {
+                props.stompClient?.send("/app/typing", {}, JSON.stringify({
+                    chatId: props.chat.id,
+                    senderId: props.reqUser?.id,
+                    senderName: props.reqUser?.fullName,
+                    type: "STOP_TYPING"
+                }));
+            }, 1000);
+        }
+    };
 
     console.log("This is message",props.messages);
 
@@ -77,7 +154,7 @@ const MessagePage = (props: MessagePageProps) => {
         }
     };
 
-    const onChangeNewMessage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onChangeNewMessage = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setIsEmojiPickerOpen(false);
         props.setNewMessage(e.target.value);
     };
@@ -137,6 +214,7 @@ const MessagePage = (props: MessagePageProps) => {
         return <MessageCard message={message} reqUser={props.reqUser} key={message.id} isNewDate={isNewDate}
                             isGroup={props.chat.isGroup}/>
     };
+    console.log("Current typing users:", Array.from(typingUsers));
 
     return (
         <div className={styles.outerMessagePageContainer}>
@@ -210,6 +288,11 @@ const MessagePage = (props: MessagePageProps) => {
                     props.messages && props.messages.length > 0 &&
                     props.messages.map(message => getMessageCard(message))}
                 <div ref={lastMessageRef}></div>
+                {typingUsers.size > 0 && (
+                    <div className={styles.typingIndicator}>
+                        {Array.from(typingUsers).join(", ")} {typingUsers.size === 1 ? "is" : "are"} typing...
+                    </div>
+                )}
             </div>
 
             {/*Message Page Footer*/}
@@ -234,7 +317,10 @@ const MessagePage = (props: MessagePageProps) => {
                         onKeyDown={onKeyDown}
                         fullWidth
                         value={props.newMessage}
-                        onChange={onChangeNewMessage}
+                        onChange={(e) => {
+                            onChangeNewMessage(e);
+                            handleTyping();
+                        }}
                         sx={{backgroundColor: 'white'}}
                         InputProps={{
                             endAdornment: (

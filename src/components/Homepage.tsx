@@ -338,6 +338,8 @@ const Homepage = () => {
                             setIsShowEditGroupChat={setIsShowEditGroupChat}
                             setCurrentChat={setCurrentChat}
                             setMessages={setMessages}
+                            isConnected={isConnected}
+                            stompClient={stompClient}
                             />}
                     </div>
                 </div>
