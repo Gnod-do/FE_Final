@@ -312,7 +312,9 @@ const Homepage = () => {
                             setNewMessage={setNewMessage}
                             onSendMessage={onSendMessage}
                             setIsShowEditGroupChat={setIsShowEditGroupChat}
-                            setCurrentChat={setCurrentChat}/>}
+                            setCurrentChat={setCurrentChat}
+                            setMessages={setMessages}
+                            />}
                     </div>
                 </div>
             </div>

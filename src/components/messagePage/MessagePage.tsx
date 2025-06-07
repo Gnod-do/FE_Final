@@ -17,6 +17,7 @@ import {TOKEN} from "../../config/Config";
 import EmojiPicker from "emoji-picker-react";
 import MoodIcon from '@mui/icons-material/Mood';
 import {EmojiClickData} from "emoji-picker-react/dist/types/exposedTypes";
+import {getAllMessages} from "../../redux/message/MessageAction";
 
 interface MessagePageProps {
     chat: ChatDTO;
@@ -27,6 +28,7 @@ interface MessagePageProps {
     onSendMessage: () => void;
     setIsShowEditGroupChat: (isShowEditGroupChat: boolean) => void;
     setCurrentChat: (chat: ChatDTO | null) => void;
+    setMessages: (messages: MessageDTO[] | []) => void
 }
 
 const MessagePage = (props: MessagePageProps) => {
@@ -40,6 +42,8 @@ const MessagePage = (props: MessagePageProps) => {
     const dispatch: AppDispatch = useDispatch();
     const open = Boolean(anchor);
     const token: string | null = localStorage.getItem(TOKEN);
+
+    console.log("This is message",props.messages);
 
     useEffect(() => {
         scrollToBottom();
@@ -68,6 +72,7 @@ const MessagePage = (props: MessagePageProps) => {
         onCloseMenu();
         if (token) {
             dispatch(deleteChat(props.chat.id, token));
+            props.setMessages([]);
             props.setCurrentChat(null);
         }
     };
@@ -198,10 +203,11 @@ const MessagePage = (props: MessagePageProps) => {
 
             {/*Message Page Content*/}
             <div className={styles.messageContentContainer} onClick={onCloseEmojiPicker}>
-                {messageQuery.length > 0 &&
+                {messageQuery.length > 0 && props.messages && props.messages.length > 0 &&
                     props.messages.filter(x => x.content.toLowerCase().includes(messageQuery))
                         .map(message => getMessageCard(message))}
                 {messageQuery.length === 0 &&
+                    props.messages && props.messages.length > 0 &&
                     props.messages.map(message => getMessageCard(message))}
                 <div ref={lastMessageRef}></div>
             </div>
