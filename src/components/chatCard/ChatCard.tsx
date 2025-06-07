@@ -6,6 +6,7 @@ import {ChatDTO} from "../../redux/chat/ChatModel";
 import {useSelector} from "react-redux";
 import {RootState} from "../../redux/Store";
 import {MessageDTO} from "../../redux/message/MessageModel";
+import { UserStatusDTO } from "../../redux/status/UserStatusModel";
 
 interface ChatCardProps {
     chat: ChatDTO;
@@ -14,6 +15,7 @@ interface ChatCardProps {
 const ChatCard = (props: ChatCardProps) => {
 
     const authState = useSelector((state: RootState) => state.auth);
+    const userState = useSelector((state: RootState) => state.user);
 
     const name: string = getChatName(props.chat, authState.reqUser);
     const initials: string = getInitialsFromName(name);
@@ -27,17 +29,34 @@ const ChatCard = (props: ChatCardProps) => {
         msg.user.id === authState.reqUser?.id || msg.readBy.includes(authState.reqUser!.id)).length;
     const numberOfUnreadMessages: number = props.chat.messages.length - numberOfReadMessages;
 
+    const partnerUser = props.chat.users.find(
+        user => user.id !== authState.reqUser?.id
+    );
+
+    const isOnline = userState.onlineStatus.some(
+        (status: UserStatusDTO) =>
+            status.userId === partnerUser?.id && status.online
+    );
+
     return (
         <div className={styles.chatCardOuterContainer}>
             <div className={styles.chatCardAvatarContainer}>
-                <Avatar sx={{
-                    width: '2.5rem',
-                    height: '2.5rem',
-                    fontSize: '1rem',
-                    mr: '0.75rem'
-                }}>
-                    {initials}
-                </Avatar>
+                <Badge
+                    color="success"
+                    variant="dot"
+                    overlap="circular"
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    invisible={!isOnline}
+                >
+                    <Avatar sx={{
+                        width: "2.5rem",
+                        height: "2.5rem",
+                        fontSize: "1rem",
+                        mr: "0.75rem"
+                    }}>
+                        {initials}
+                    </Avatar>
+                </Badge>
             </div>
             <div className={styles.chatCardContentContainer}>
                 <div className={styles.chatCardContentInnerContainer}>

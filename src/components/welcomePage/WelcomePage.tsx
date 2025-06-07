@@ -16,7 +16,6 @@ const WelcomePage = (props: WelcomePageProps) => {
                     height: '10rem',
                 }}/>
                 <h1>Welcome, {props.reqUser?.fullName}!</h1>
-                <p>Chat App designed and developed by Nicolas Justen.</p>
             </div>
         </div>
     );

@@ -25,6 +25,7 @@ import {Client, over, Subscription} from "stompjs";
 import {AUTHORIZATION_PREFIX} from "../redux/Constants";
 import CreateGroupChat from "./editChat/CreateGroupChat";
 import CreateSingleChat from "./editChat/CreateSingleChat";
+import { fetchOnlineStatus } from "../redux/status/UserStatusAction";
 
 const Homepage = () => {
 
@@ -51,11 +52,23 @@ const Homepage = () => {
     const [subscribeTry, setSubscribeTry] = useState<number>(1);
     const open = Boolean(anchor);
 
+
     useEffect(() => {
         if (token && !authState.reqUser) {
             dispatch(currentUser(token));
         }
     }, [token, dispatch, authState.reqUser, navigate]);
+
+    useEffect(() => {
+        if (token) {
+        dispatch(fetchOnlineStatus());
+        const interval = setInterval(() => {
+            dispatch(fetchOnlineStatus());
+        }, 15000); // 15 giây
+
+        return () => clearInterval(interval);
+        }
+    }, [dispatch, token]);
 
     useEffect(() => {
         if (!token || authState.reqUser === null) {
@@ -129,7 +142,9 @@ const Homepage = () => {
             Authorization: `${AUTHORIZATION_PREFIX}${token}`
         };
 
-        const socket: WebSocket = new SockJS("http://localhost:8000/ws");
+        const socket: WebSocket = new SockJS(
+        `http://localhost:8000/ws?token=${AUTHORIZATION_PREFIX}${token}`
+        );
         const client: Client = over(socket);
         client.connect(headers, onConnect, onError);
         setStompClient(client);
@@ -137,6 +152,14 @@ const Homepage = () => {
 
     const onConnect = async () => {
         setTimeout(() => setIsConnected(true), 1000);
+    };
+
+    const disconnect = () => {
+        if (stompClient && stompClient.connected) {
+        stompClient.disconnect(() => {
+            console.log("Disconnected from WebSocket server");
+        });
+        }
     };
 
     const onError = (error: any) => {
@@ -181,6 +204,7 @@ const Homepage = () => {
     };
 
     const onLogout = () => {
+        disconnect();
         dispatch(logoutUser());
         navigate("/signin");
     };

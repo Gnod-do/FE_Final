@@ -3,11 +3,13 @@ import {combineReducers} from "redux";
 import {configureStore} from "@reduxjs/toolkit";
 import chatReducer from "./chat/ChatReducer";
 import messageReducer from "./message/MessageReducer";
+import userReducer from "./status/UserReducer";
 
 const rootReducer = combineReducers({
     auth: authReducer,
     chat: chatReducer,
     message: messageReducer,
+    user: userReducer,
 });
 
 export const store = configureStore({
